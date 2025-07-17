@@ -1,0 +1,61 @@
+### QUESTION
+
+You are given the following spatial datasets with ‘WGS_1984_UTM_Zone_45N’ 
+Projection for Ward 31, Khulna City Corporation.
+
+ a. Ward_31_KCC                     
+ b. Mouza_Ward31                       
+ c. Proposed_Road_Ward31
+ d. Existing_Structure
+ e. Existing_Road
+ f. Ward_boundary_KCC
+
+❑Find out the total number of structures based on structure type within 1 m 
+ distance from the proposed road.
+❑Find out the affected plots with ownership information within 1 m distance from 
+ the proposed road
+
+
+
+ ### SOLUTION
+
+ import geopandas as gpd
+from shapely.ops import unary_union
+import matplotlib.pyplot as plt
+
+# Step 1: Load relevant data from the GDB
+gdb_path = r"D:\GIS_File\Project\2nd-Civil Engineering Project\Road Improvement.gdb\Road Improvement.gdb"  # Change to actual path
+
+# Load layers
+structures = gpd.read_file(gdb_path, layer="Existing_Structure")
+proposed_road = gpd.read_file(gdb_path, layer="Proposed_Road_Ward31")
+
+# Step 2: Reproject to UTM Zone 45N (WGS 1984)
+target_crs = "EPSG:32645"
+structures = structures.to_crs(target_crs)
+proposed_road = proposed_road.to_crs(target_crs)
+
+# Step 3: Create 1 meter buffer around proposed road
+buffer_1m = proposed_road.buffer(1)
+road_buffer_union = unary_union(buffer_1m)
+
+# Step 4: Identify structures within 1 meter
+structures['within_1m'] = structures.geometry.intersects(road_buffer_union)
+near_structures = structures[structures['within_1m']]
+
+# Step 5: Count by structure type
+structure_type_col = 'STR_TYPE'  # Change if different
+structure_counts = near_structures[structure_type_col].value_counts()
+
+print("\n✅ Structure counts within 1 meter of the proposed road:\n")
+print(structure_counts)
+
+# Step 6: Optional plot
+fig, ax = plt.subplots(figsize=(10, 10))
+proposed_road.plot(ax=ax, color='black', linewidth=2, label='Proposed Road')
+structures.plot(ax=ax, color='blue', markersize=10, label='All Structures')
+near_structures.plot(ax=ax, color='red', markersize=20, label='Structures <1m')
+
+plt.legend()
+plt.title("Structures Within 1 Meter of Proposed Road")
+plt.show()
